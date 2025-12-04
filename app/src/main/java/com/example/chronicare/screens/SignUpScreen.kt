@@ -1,248 +1,117 @@
 package com.example.chronicare.screens
 
-import android.util.Patterns
-import android.widget.Toast
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.input.*
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import com.example.chronicare.R
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.example.chronicare.homeScreens.DashboardScreen
 
-
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SignUpScreen(navController: NavController, viewModel: SharedData) {
-    val context = LocalContext.current
-    val scrollState = rememberScrollState()
-
-   // var name by remember { mutableStateOf("") }
- //   var email by remember { mutableStateOf("") }
-//    var password by remember { mutableStateOf("") }
+fun SignUpScreen(
+    navController: NavController,
+    authViewModel: AuthViewModel = viewModel() // Hilt or other DI can be used here too
+) {
+    // State for the text fields
+    var email by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
-    var passwordVisible by remember { mutableStateOf(false) }
-    var confirmPasswordVisible by remember { mutableStateOf(false) }
 
-    // Validation error states
-    var usernameError by remember { mutableStateOf<String?>(null) }
-    var emailError by remember { mutableStateOf<String?>(null) }
-    var passwordError by remember { mutableStateOf<String?>(null) }
-    var confirmPasswordError by remember { mutableStateOf<String?>(null) }
-
-    fun validate(): Boolean {
-        var valid = true
-
-        usernameError = if (viewModel.username.isBlank()) {
-            valid = false
-            "Name is required"
-        } else null
-
-        emailError = if (!Patterns.EMAIL_ADDRESS.matcher(viewModel.email).matches()) {
-            valid = false
-            "Enter a valid email"
-        } else null
-
-        passwordError = if (viewModel.password.length < 6) {
-            valid = false
-            "Password must be at least 6 characters"
-        } else null
-
-        confirmPasswordError = if (confirmPassword != viewModel.password) {
-            valid = false
-            "Passwords do not match"
-        } else null
-
-        return valid
-    }
+    // State to manage loading indicator
+    var isLoading by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.White)
-            .verticalScroll(scrollState)
-            .padding(24.dp),
+            .padding(16.dp),
+        verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Logo
-        Image(
-            painter = painterResource(id = R.drawable.logo),
-            contentDescription = "App logo",
-            modifier = Modifier
-                .size(150.dp)
-                .padding(bottom = 8.dp)
-        )
+        Text(text = "Create Account", style = MaterialTheme.typography.headlineMedium)
 
-        // Title
-        Text(
-            text = "SIGN UP",
-            color = Color(0xFF007F7A),
-            fontSize = 26.sp,
-            style = MaterialTheme.typography.titleLarge,
-            modifier = Modifier.padding(bottom = 24.dp)
-        )
+        Spacer(modifier = Modifier.height(32.dp))
 
-        // -- Name Field --
         OutlinedTextField(
-            value = viewModel.username,
-            onValueChange = {
-                viewModel.username = it
-                if (usernameError != null) validate()
-            },
-            label = { Text("Name") },
-            isError = usernameError != null,
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedContainerColor = Color.White,
-                unfocusedContainerColor = Color.White,
-                errorContainerColor = Color.White,
-                focusedBorderColor = if (emailError != null) Color.Red else Color(0xFF007F7A),
-                unfocusedBorderColor = if (emailError != null) Color.Red else Color.Gray,
-                errorBorderColor = Color.Red,
-                cursorColor = Color(0xFF007F7A),
-                errorLabelColor = Color.Red
-            )
-        )
-        usernameError?.let {
-            Text(text = it, color = Color.Red, fontSize = 12.sp, modifier = Modifier.align(Alignment.Start))
-        }
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        // -- Email Field --
-        OutlinedTextField(
-            value = viewModel.email,
-            onValueChange = {
-                viewModel.email = it
-                if (emailError != null) validate()
-            },
+            value = email,
+            onValueChange = { email = it },
             label = { Text("Email") },
-            isError = emailError != null,
-            singleLine = true,
-            keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Email),
-            modifier = Modifier.fillMaxWidth(),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedContainerColor = Color.White,
-                unfocusedContainerColor = Color.White,
-                errorContainerColor = Color.White,
-                focusedBorderColor = if (emailError != null) Color.Red else Color(0xFF007F7A),
-                unfocusedBorderColor = if (emailError != null) Color.Red else Color.Gray,
-                errorBorderColor = Color.Red,
-                cursorColor = Color(0xFF007F7A),
-                errorLabelColor = Color.Red
-            )
+            modifier = Modifier.fillMaxWidth()
         )
-        emailError?.let {
-            Text(text = it, color = Color.Red, fontSize = 12.sp, modifier = Modifier.align(Alignment.Start))
-        }
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
-        // -- Password Field --
         OutlinedTextField(
-            value = viewModel.password,
-            onValueChange = {
-                viewModel.password = it
-                if (passwordError != null) validate()
-            },
+            value = password,
+            onValueChange = { password = it },
             label = { Text("Password") },
-            isError = passwordError != null,
-            singleLine = true,
-            visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-            trailingIcon = {
-                IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                    Icon(
-                        painter = painterResource(id = if (passwordVisible) R.drawable.ic_eye_open else R.drawable.ic_eye_closed),
-                        contentDescription = "Toggle password visibility"
-                    )
-                }
-            },
             modifier = Modifier.fillMaxWidth(),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedContainerColor = Color.White,
-                unfocusedContainerColor = Color.White,
-                errorContainerColor = Color.White,
-                focusedBorderColor = if (emailError != null) Color.Red else Color(0xFF007F7A),
-                unfocusedBorderColor = if (emailError != null) Color.Red else Color.Gray,
-                errorBorderColor = Color.Red,
-                cursorColor = Color(0xFF007F7A),
-                errorLabelColor = Color.Red
-            )
+            visualTransformation = PasswordVisualTransformation()
         )
-        passwordError?.let {
-            Text(text = it, color = Color.Red, fontSize = 12.sp, modifier = Modifier.align(Alignment.Start))
-        }
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
-        // -- Confirm Password Field --
         OutlinedTextField(
             value = confirmPassword,
-            onValueChange = {
-                confirmPassword = it
-                if (confirmPasswordError != null) validate()
-            },
-            label = { Text("Re-enter Password") },
-            isError = confirmPasswordError != null,
-            singleLine = true,
-            visualTransformation = if (confirmPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-            trailingIcon = {
-                IconButton(onClick = { confirmPasswordVisible = !confirmPasswordVisible }) {
-                    Icon(
-                        painter = painterResource(id = if (confirmPasswordVisible) R.drawable.ic_eye_open else R.drawable.ic_eye_closed),
-                        contentDescription = "Toggle confirm password visibility"
-                    )
-                }
-            },
+            onValueChange = { confirmPassword = it },
+            label = { Text("Confirm Password") },
             modifier = Modifier.fillMaxWidth(),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedContainerColor = Color.White,
-                unfocusedContainerColor = Color.White,
-                errorContainerColor = Color.White,
-                focusedBorderColor = if (emailError != null) Color.Red else Color(0xFF007F7A),
-                unfocusedBorderColor = if (emailError != null) Color.Red else Color.Gray,
-                errorBorderColor = Color.Red,
-                cursorColor = Color(0xFF007F7A),
-                errorLabelColor = Color.Red
-            )
+            visualTransformation = PasswordVisualTransformation(),
+            // Optional: Add error display for password mismatch
+            isError = password != confirmPassword && confirmPassword.isNotEmpty()
         )
-        confirmPasswordError?.let {
-            Text(text = it, color = Color.Red, fontSize = 12.sp, modifier = Modifier.align(Alignment.Start))
+
+        if (password != confirmPassword && confirmPassword.isNotEmpty()) {
+            Text(
+                text = "Passwords do not match",
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(start = 16.dp, top = 4.dp)
+            )
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(32.dp))
 
-        // Sign Up Button
         Button(
             onClick = {
-                if (validate()) {
-
-                    Toast.makeText(context, "Registration Successful", Toast.LENGTH_SHORT).show()
-                    navController.navigate("home")
+                // Basic validation
+                if (email.isNotBlank() && password.isNotBlank() && password == confirmPassword) {
+                    isLoading = true
+                    authViewModel.signUp(email, password) {
+                        // On success, navigate to the next screen (e.g., home or login)
+                        isLoading = false
+                        // Example: Navigate to login screen after successful sign-up
+                        navController.navigate("login") {
+                            // Pop up to the start of the graph to avoid going back to sign-up
+                            popUpTo(navController.graph.startDestinationId) {
+                                inclusive = true
+                            }
+                        }
+                    }
                 }
             },
-            modifier = Modifier.fillMaxWidth(),
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF007F7A)),
-            contentPadding = PaddingValues(12.dp)
+            // Disable button if fields are empty, passwords don't match, or if loading
+            enabled = email.isNotBlank() && password.isNotBlank() && password == confirmPassword && !isLoading,
+            modifier = Modifier.fillMaxWidth()
         ) {
-            Text("SIGN UP", color = Color.White)
+            if (isLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(24.dp),
+                    color = MaterialTheme.colorScheme.onPrimary
+                )
+            } else {
+                Text("Sign Up")
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        TextButton(onClick = { navController.navigate("login") }) {
+            Text("Already have an account? Log In")
         }
     }
 }
-

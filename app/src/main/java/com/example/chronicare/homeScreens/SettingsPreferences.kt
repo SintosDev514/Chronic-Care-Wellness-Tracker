@@ -1,146 +1,67 @@
-package com.example.chronicare.homeScreens
+package com.example.chronicare.homeScreens // Make sure the package is correct
 
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
+import androidx.navigation.NavController
 import com.example.chronicare.screens.SharedData
-
-// Sample data for settings preferences
-data class SettingsOption(
-    val title: String,
-    val description: String,
-    val isEnabled: Boolean
-)
-
-private val sampleSettingsOptions = listOf(
-    SettingsOption(
-        title = "Notifications",
-        description = "Enable notifications for reminders and updates.",
-        isEnabled = true
-    ),
-    SettingsOption(
-        title = "Dark Mode",
-        description = "Toggle dark theme for the app.",
-        isEnabled = false
-    ),
-    SettingsOption(
-        title = "Auto-Login",
-        description = "Enable auto-login to your account.",
-        isEnabled = true
-    )
-)
-
-val accentColorSetting = Color(0xFF007F7A)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsPreferences(sharedData: SharedData) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
-    ) {
-
-        Text(
-            text = "Settings",
-            style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
-            modifier = Modifier.padding(bottom = 16.dp),
-            color = accentColorSetting
-        )
-
-        //  Used data from SharedData ViewModel tikang sa login
-        AccountDetailsCard(
-            userEmail = sharedData.email.ifBlank { "Not set" },
-            userPassword = sharedData.password.ifBlank { "Not set" },
-            joinedDate = "Joined: Jan 2025"
-        )
-
-        Spacer(modifier = Modifier.height(20.dp))
-
-        // List of settings options
-        sampleSettingsOptions.forEach { setting ->
-            SettingsOptionCard(settingOption = setting)
-            Spacer(modifier = Modifier.height(12.dp))
+// FIX 1: Add NavController and SharedData to the function signature
+fun SettingsPreferences(navController: NavController, sharedData: SharedData) {
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Settings & Preferences") },
+                // FIX 2: Add a back button that uses the NavController
+                navigationIcon = {
+                    IconButton(onClick = { navController.popBackStack() }) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back"
+                        )
+                    }
+                }
+            )
         }
+    ) { innerPadding ->
+        Column(modifier = Modifier.padding(innerPadding)) {
+            //
+            // YOUR SETTINGS UI GOES HERE
+            // For example:
+            //
+            // Text("User: ${sharedData.username}")
+            // SwitchPreference("Enable Notifications", checked = true, onCheckedChange = {})
+            // ClickablePreference("Change Password", onClick = { /* navigate to change password screen */ })
+            //
+            Text("This is the Settings Screen.")
 
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Action Button
-        Button(
-            onClick = { /* Navigate to Account Settings */ },
-            modifier = Modifier.fillMaxWidth(),
-            colors = ButtonDefaults.buttonColors(containerColor = accentColorSetting)
-        ) {
-            Text(text = "Go to Account Settings")
         }
     }
 }
 
-//  Account Details Card
+// You can create helper composables for your settings items like this:
+
 @Composable
-fun AccountDetailsCard(userEmail: String, userPassword: String, joinedDate: String) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White)
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
-            Text(
-                text = "Account Details",
-                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                color = accentColorSetting
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Text(text = "Email: $userEmail", style = MaterialTheme.typography.bodyMedium)
-            Text(text = "Password: $userPassword", style = MaterialTheme.typography.bodyMedium)
-            Text(text = joinedDate, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+fun SwitchPreference(title: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
+    ListItem(
+        headlineContent = { Text(title) },
+        trailingContent = {
+            Switch(checked = checked, onCheckedChange = onCheckedChange)
         }
-    }
+    )
 }
 
-//  Settings Option Card
 @Composable
-fun SettingsOptionCard(settingOption: SettingsOption) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White)
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
-            Text(
-                text = settingOption.title,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold
-            )
-            Text(
-                text = settingOption.description,
-                style = MaterialTheme.typography.bodySmall,
-                color = Color.Gray
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Switch(
-                checked = settingOption.isEnabled,
-                onCheckedChange = { },
-                modifier = Modifier.align(Alignment.End)
-            )
-        }
-    }
+fun ClickablePreference(title: String, onClick: () -> Unit) {
+    ListItem(
+        headlineContent = { Text(title) },
+        modifier = androidx.compose.ui.Modifier.clickable(onClick = onClick)
+    )
 }
-
