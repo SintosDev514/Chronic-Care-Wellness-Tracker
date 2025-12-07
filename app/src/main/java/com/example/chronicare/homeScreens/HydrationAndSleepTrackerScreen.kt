@@ -1,35 +1,36 @@
 package com.example.chronicare.homeScreens
 
 import android.widget.Toast
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.LocalDrink
+import androidx.compose.material.icons.outlined.LocalDrink
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.navigation.NavController
+import com.example.chronicare.screens.SharedData
 import com.example.chronicare.ui.theme.ChroniCareTheme
 
 @Composable
-fun HealthTrackingApp() {
+fun HealthTrackingApp(navController: NavController, sharedData: SharedData) {
+
     var sleepInput by remember { mutableStateOf("") }
-    var waterInput by remember { mutableStateOf("") }
     var currentSleep by remember { mutableStateOf(0.0f) }
+
     var currentWater by remember { mutableStateOf(0f) }
 
     val sleepGoal = 8f
     val waterGoal = 2000f
+    val glassSize = 250f // per glass
+
     val context = LocalContext.current
     val accentColor = Color(0xFF007F7A)
 
@@ -44,19 +45,17 @@ fun HealthTrackingApp() {
                     .padding(20.dp),
                 verticalArrangement = Arrangement.spacedBy(24.dp)
             ) {
-                // App Title
+
                 Text(
                     text = "Daily Health Tracker",
-                    style = MaterialTheme.typography.headlineSmall.copy(
-                        fontWeight = FontWeight.Bold
-                    ),
+                    style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
                     color = accentColor,
-                    modifier = Modifier
-
-                        .padding(vertical = 8.dp)
+                    modifier = Modifier.padding(vertical = 8.dp)
                 )
 
-                // Sleep Tracker Card
+                // ---------------------------
+                // SLEEP TRACKER
+                // ---------------------------
                 TrackerCard(
                     title = "Sleep Tracker",
                     goalText = "Goal: 8 hours",
@@ -68,52 +67,102 @@ fun HealthTrackingApp() {
                     buttonLabel = "Log Sleep",
                     onButtonClick = {
                         val sleepHours = sleepInput.toFloatOrNull()
-                        if (sleepHours != null && sleepHours in 0f..sleepGoal) {
+                        if (sleepHours != null && sleepHours >= 0) {
                             currentSleep = sleepHours
-                            Toast.makeText(
-                                context,
-                                "Sleep logged: $sleepHours hours",
-                                Toast.LENGTH_SHORT
-                            ).show()
+                            sharedData.saveSleepData(sleepHours)
+                            Toast.makeText(context, "Sleep logged: $sleepHours hours", Toast.LENGTH_SHORT).show()
+                            sleepInput = ""
                         } else {
-                            Toast.makeText(
-                                context,
-                                "Enter valid sleep hours (0–8)",
-                                Toast.LENGTH_SHORT
-                            ).show()
+                            Toast.makeText(context, "Enter valid sleep hours", Toast.LENGTH_SHORT).show()
                         }
                     },
-                    inputLabel = "Enter sleep hours (0–8)"
+                    inputLabel = "Enter sleep hours"
                 )
 
-                // Water Tracker Card
-                TrackerCard(
-                    title = "Water Intake Tracker",
-                    goalText = "Goal: 2000 ml (2 liters)",
-                    currentValueText = "Current: ${currentWater} ml",
-                    progress = currentWater / waterGoal,
-                    progressColor = accentColor,
-                    inputValue = waterInput,
-                    onInputChange = { waterInput = it },
-                    buttonLabel = "Log Water",
-                    onButtonClick = {
-                        val waterAmount = waterInput.toFloatOrNull()
-                        if (waterAmount != null && waterAmount > 0) {
-                            currentWater = (currentWater + waterAmount).coerceAtMost(waterGoal)
-                            Toast.makeText(
-                                context,
-                                "Water logged: $waterAmount ml",
-                                Toast.LENGTH_SHORT
-                            ).show()
-                        } else {
-                            Toast.makeText(
-                                context,
-                                "Please enter a valid water amount",
-                                Toast.LENGTH_SHORT
-                            ).show()
-                        }
-                    },
-                    inputLabel = "Enter water (ml)"
+                // ---------------------------
+                // WATER TRACKER (GLASS ICON VERSION)
+                // ---------------------------
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                    shape = RoundedCornerShape(16.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
+                ) {
+
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+
+                        Text(
+                            text = "Water Intake Tracker",
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+
+                        Text(
+                            text = "Goal: 2000ml (8 glasses)",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+
+                        LinearProgressIndicator(
+                            progress = { (currentWater / waterGoal).coerceIn(0f, 1f) },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(8.dp)
+                                .clip(RoundedCornerShape(4.dp)),
+                            color = accentColor
+                        )
+
+                        Text(
+                            text = "Current: ${currentWater.toInt()} ml",
+                            style = MaterialTheme.typography.bodyLarge.copy(
+                                color = accentColor,
+                                fontWeight = FontWeight.Medium
+                            )
+                        )
+
+                        // ---------------------------
+                        // GLASS ICONS ROW
+                        // ---------------------------
+                        WaterGlassesRow(
+                            currentWater = currentWater,
+                            waterGoal = waterGoal,
+                            glassSize = glassSize,
+                            onGlassClick = {
+                                val newAmount = (currentWater + glassSize).coerceAtMost(waterGoal)
+                                currentWater = newAmount
+                                sharedData.addWaterData(glassSize)
+                                Toast.makeText(context, "Logged 250ml", Toast.LENGTH_SHORT).show()
+                            }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun WaterGlassesRow(
+    currentWater: Float,
+    waterGoal: Float,
+    glassSize: Float,
+    onGlassClick: () -> Unit
+) {
+    val totalGlasses = (waterGoal / glassSize).toInt()
+    val filledGlasses = (currentWater / glassSize).toInt()
+
+    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        repeat(totalGlasses) { index ->
+            val isFilled = index < filledGlasses
+
+            IconButton(onClick = onGlassClick) {
+                Icon(
+                    imageVector = if (isFilled) Icons.Filled.LocalDrink else Icons.Outlined.LocalDrink,
+                    contentDescription = "Glass of water",
+                    tint = if (isFilled) Color(0xFF007F7A) else Color.Gray,
+                    modifier = Modifier.size(40.dp)
                 )
             }
         }
@@ -135,9 +184,7 @@ fun TrackerCard(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        ),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
         shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
     ) {
@@ -151,11 +198,7 @@ fun TrackerCard(
                 color = MaterialTheme.colorScheme.onSurface
             )
 
-            Text(
-                text = goalText,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Text(goalText, style = MaterialTheme.typography.bodyMedium)
 
             LinearProgressIndicator(
                 progress = { progress.coerceIn(0f, 1f) },
@@ -178,9 +221,8 @@ fun TrackerCard(
                 value = inputValue,
                 onValueChange = onInputChange,
                 label = { Text(inputLabel) },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                 modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
                 shape = RoundedCornerShape(10.dp)
             )
 
@@ -192,13 +234,5 @@ fun TrackerCard(
                 Text(buttonLabel, color = Color.White)
             }
         }
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun DefaultPreview() {
-    ChroniCareTheme {
-        HealthTrackingApp()
     }
 }

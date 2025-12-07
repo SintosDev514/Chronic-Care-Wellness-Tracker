@@ -139,9 +139,9 @@ fun NavigationHost(
         composable(NavRoutes.Dashboard.route) { DashboardScreen(navController, sharedData) }
         composable(NavRoutes.DailyLog.route) { DailyWeeklyLogScreen() }
         composable(NavRoutes.HealthInsights.route) { HealthInsightsScreen() }
-        composable(NavRoutes.MedicationReminder.route) { MedicationTreatmentReminderScreen() }
+        composable(NavRoutes.MedicationReminder.route) { MedicationTreatmentReminderScreen(sharedData = sharedData) }
         composable(NavRoutes.ProgressTracking.route) { ProgressTrackingScreen() }
-        composable(NavRoutes.HydrationAndSleepTrackerScreen.route) { HealthTrackingApp() }
+        composable(NavRoutes.HydrationAndSleepTrackerScreen.route) { HealthTrackingApp(navController, sharedData) }
         composable(NavRoutes.Settings.route) { SettingsPreferences(navController, sharedData) }
     }
 }
