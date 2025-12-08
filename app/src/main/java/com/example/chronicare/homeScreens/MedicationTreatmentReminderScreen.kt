@@ -1,6 +1,5 @@
 package com.example.chronicare.homeScreens
 
-import androidx.compose.material.icons.filled.Add
 import android.Manifest
 import android.annotation.SuppressLint
 import android.app.AlarmManager
@@ -26,6 +25,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -53,8 +54,10 @@ class ReminderReceiver : BroadcastReceiver() {
 
     @SuppressLint("MissingPermission")
     override fun onReceive(context: Context, intent: Intent) {
-        val notificationIdString = intent.getStringExtra("notificationId") ?: UUID.randomUUID().toString()
-        val notificationId = notificationIdString.hashCode() // Use the same unique hash code as the PendingIntent
+        val notificationIdString =
+            intent.getStringExtra("notificationId") ?: UUID.randomUUID().toString()
+        val notificationId = notificationIdString.hashCode()
+
         val medicationName = intent.getStringExtra("medicationName") ?: "Medication"
         val dosage = intent.getStringExtra("dosage") ?: ""
 
@@ -75,14 +78,16 @@ class ReminderReceiver : BroadcastReceiver() {
             .setAutoCancel(true)
             .build()
 
-        // Only post notification if permission is granted (for Android 13+)
-        if (ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
-            || Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU
+        if (ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.POST_NOTIFICATIONS
+            ) == PackageManager.PERMISSION_GRANTED || Build.VERSION.SDK_INT < 33
         ) {
             notificationManager(context).notify(notificationId, notification)
         }
     }
 }
+
 private fun notificationManager(context: Context) =
     context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
@@ -96,31 +101,38 @@ fun scheduleReminder(context: Context, reminder: MedicationReminder) {
         calendar.time = sdf.parse(reminder.dateTime) ?: return
     } catch (e: Exception) {
         e.printStackTrace()
-        return // Don't schedule if date is invalid
+        return
     }
 
-
     val intent = Intent(context, ReminderReceiver::class.java).apply {
-        putExtra("notificationId", reminder.id) // <-- ADD THIS LINE
+        putExtra("notificationId", reminder.id)
         putExtra("medicationName", reminder.medicationName)
         putExtra("dosage", reminder.dosage)
     }
 
-
     val pendingIntent = PendingIntent.getBroadcast(
         context,
-        reminder.id.hashCode(), // unique requestCode per reminder
+        reminder.id.hashCode(),
         intent,
         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
     )
 
-    // Ensure the alarm can wake up the device (best effort)
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !alarmManager.canScheduleExactAlarms()) {
-        Toast.makeText(context, "Cannot schedule exact alarms. Please enable permission in settings.", Toast.LENGTH_LONG).show()
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+        !alarmManager.canScheduleExactAlarms()
+    ) {
+        Toast.makeText(
+            context,
+            "Cannot schedule exact alarms. Please enable permission in settings.",
+            Toast.LENGTH_LONG
+        ).show()
         return
     }
 
-    alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, calendar.timeInMillis, pendingIntent)
+    alarmManager.setExactAndAllowWhileIdle(
+        AlarmManager.RTC_WAKEUP,
+        calendar.timeInMillis,
+        pendingIntent
+    )
 }
 
 // --- Main Screen Composable ---
@@ -132,17 +144,19 @@ fun MedicationTreatmentReminderScreen(sharedData: SharedData) {
     val context = LocalContext.current
     var showAddDialog by remember { mutableStateOf(false) }
 
-    // Notification Permission Handling (Android 13+)
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { isGranted ->
         if (!isGranted) {
-            Toast.makeText(context, "Notification permission is required for reminders.", Toast.LENGTH_LONG).show()
+            Toast.makeText(
+                context,
+                "Notification permission is required for reminders.",
+                Toast.LENGTH_LONG
+            ).show()
         }
     }
 
-    // Request permission when the screen is first shown (if necessary)
-    LaunchedEffect(key1 = true) {
+    LaunchedEffect(true) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             launcher.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
@@ -171,7 +185,6 @@ fun MedicationTreatmentReminderScreen(sharedData: SharedData) {
                 color = accentColorReminder
             )
 
-            // Use LazyColumn and get medications from SharedData
             LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 items(sharedData.medicationReminders, key = { it.id }) { medication ->
                     MedicationReminderCard(
@@ -205,42 +218,70 @@ fun MedicationTreatmentReminderScreen(sharedData: SharedData) {
     }
 }
 
+// --- FIXED DIALOG COMPOSABLE ---
 @Composable
 fun AddReminderDialog(onDismiss: () -> Unit, onAdd: (String, String, String) -> Unit) {
     val context = LocalContext.current
     var medicationName by remember { mutableStateOf("") }
     var dosage by remember { mutableStateOf("") }
     var dateTimeDisplay by remember { mutableStateOf("") }
+
+    // State to hold the calendar instance
     val calendar = remember { Calendar.getInstance() }
 
-    val sdf = SimpleDateFormat("MMM dd, yyyy, hh:mm a", Locale.getDefault())
+    // State to control dialog visibility
+    var showDatePicker by remember { mutableStateOf(false) }
+    var showTimePicker by remember { mutableStateOf(false) }
 
-    // Time picker
-    val timePickerDialog = TimePickerDialog(
-        context,
-        { _, hourOfDay, minute ->
-            calendar.set(Calendar.HOUR_OF_DAY, hourOfDay)
-            calendar.set(Calendar.MINUTE, minute)
-            dateTimeDisplay = sdf.format(calendar.time)
-        },
-        calendar.get(Calendar.HOUR_OF_DAY),
-        calendar.get(Calendar.MINUTE),
-        false // 12-hour format
-    )
-
-    // Date picker shows time picker after date selected
-    val datePickerDialog = DatePickerDialog(
-        context,
-        { _, year, month, dayOfMonth ->
+    // This block launches the DatePickerDialog when showDatePicker is true
+    if (showDatePicker) {
+        val dateSetListener = DatePickerDialog.OnDateSetListener { _, year, month, dayOfMonth ->
             calendar.set(Calendar.YEAR, year)
             calendar.set(Calendar.MONTH, month)
             calendar.set(Calendar.DAY_OF_MONTH, dayOfMonth)
-            timePickerDialog.show()
-        },
-        calendar.get(Calendar.YEAR),
-        calendar.get(Calendar.MONTH),
-        calendar.get(Calendar.DAY_OF_MONTH)
-    )
+            showDatePicker = false // Hide date picker
+            showTimePicker = true  // Show time picker next
+        }
+
+        val datePickerDialog = DatePickerDialog(
+            context,
+            dateSetListener,
+            calendar.get(Calendar.YEAR),
+            calendar.get(Calendar.MONTH),
+            calendar.get(Calendar.DAY_OF_MONTH)
+        )
+
+        // Handles the case where the user cancels the dialog
+        datePickerDialog.setOnDismissListener {
+            showDatePicker = false
+        }
+        datePickerDialog.show()
+    }
+
+    // This block launches the TimePickerDialog when showTimePicker is true
+    if (showTimePicker) {
+        val timeSetListener = TimePickerDialog.OnTimeSetListener { _, hourOfDay, minute ->
+            calendar.set(Calendar.HOUR_OF_DAY, hourOfDay)
+            calendar.set(Calendar.MINUTE, minute)
+            val sdf = SimpleDateFormat("MMM dd, yyyy, hh:mm a", Locale.getDefault())
+            dateTimeDisplay = sdf.format(calendar.time)
+            showTimePicker = false // Hide time picker
+        }
+
+        val timePickerDialog = TimePickerDialog(
+            context,
+            timeSetListener,
+            calendar.get(Calendar.HOUR_OF_DAY),
+            calendar.get(Calendar.MINUTE),
+            false // Use 12-hour format with AM/PM
+        )
+
+        // Handles the case where the user cancels the dialog
+        timePickerDialog.setOnDismissListener {
+            showTimePicker = false
+        }
+        timePickerDialog.show()
+    }
 
     Dialog(onDismissRequest = onDismiss) {
         Card(
@@ -253,7 +294,11 @@ fun AddReminderDialog(onDismiss: () -> Unit, onAdd: (String, String, String) -> 
                 modifier = Modifier.padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Text("Add New Reminder", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                Text(
+                    "Add New Reminder",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
                 OutlinedTextField(
                     value = medicationName,
                     onValueChange = { medicationName = it },
@@ -267,28 +312,47 @@ fun AddReminderDialog(onDismiss: () -> Unit, onAdd: (String, String, String) -> 
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                // Clickable field to show the date picker
-                Box(modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { datePickerDialog.show() }
+                // This Box makes the entire text field clickable
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { showDatePicker = true } // This now works every time
                 ) {
                     OutlinedTextField(
                         value = dateTimeDisplay,
-                        onValueChange = {},
+                        onValueChange = {}, // readOnly, so no change handler needed
                         label = { Text("Date & Time") },
-                        readOnly = true, // keep it read-only; user taps to open pickers
+                        readOnly = true,
+                        // This makes the text field appear disabled so users know to click
+                        colors = OutlinedTextFieldDefaults.colors(
+                            disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                            disabledBorderColor = MaterialTheme.colorScheme.outline,
+                            disabledPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        ),
+                        enabled = false,
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
 
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
                     TextButton(onClick = onDismiss) { Text("Cancel") }
                     Spacer(modifier = Modifier.width(8.dp))
                     Button(onClick = {
-                        if (medicationName.isNotBlank() && dosage.isNotBlank() && dateTimeDisplay.isNotBlank()) {
+                        if (medicationName.isNotBlank() &&
+                            dosage.isNotBlank() &&
+                            dateTimeDisplay.isNotBlank()
+                        ) {
                             onAdd(medicationName, dosage, dateTimeDisplay)
                         } else {
-                            Toast.makeText(context, "Please fill all fields and select a date/time", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(
+                                context,
+                                "Please fill all fields and select a date/time",
+                                Toast.LENGTH_SHORT
+                            ).show()
                         }
                     }) {
                         Text("Add")
@@ -299,7 +363,7 @@ fun AddReminderDialog(onDismiss: () -> Unit, onAdd: (String, String, String) -> 
     }
 }
 
-// --- Reminder Card UI ---
+// --- Unchanged Card Composable ---
 @Composable
 fun MedicationReminderCard(medication: MedicationReminder, onStatusChange: (String) -> Unit) {
     Card(
@@ -314,12 +378,28 @@ fun MedicationReminderCard(medication: MedicationReminder, onStatusChange: (Stri
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(medication.medicationName, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
-                Text(medication.dateTime, style = MaterialTheme.typography.bodyMedium, color = accentColorReminder)
+                Text(
+                    medication.medicationName,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Text(
+                    medication.dateTime,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = accentColorReminder
+                )
             }
+
             Spacer(modifier = Modifier.height(8.dp))
-            Text("Dosage: ${medication.dosage}", style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
+
+            Text(
+                "Dosage: ${medication.dosage}",
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color.Gray
+            )
+
             Spacer(modifier = Modifier.height(12.dp))
+
             Text(
                 "Status: ${medication.status}",
                 style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
@@ -333,7 +413,10 @@ fun MedicationReminderCard(medication: MedicationReminder, onStatusChange: (Stri
 
             if (medication.status == "Due") {
                 Spacer(modifier = Modifier.height(16.dp))
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
                     Button(
                         onClick = { onStatusChange("Taken") },
                         colors = ButtonDefaults.buttonColors(containerColor = accentColorReminder),
