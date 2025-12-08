@@ -63,13 +63,14 @@ dependencies {
     implementation("com.google.firebase:firebase-database-ktx")
 
     // Compose - Import the Bill of Materials (BoM)
-    implementation(platform("androidx.compose:compose-bom:2024.06.00"))
+    implementation(platform(libs.androidx.compose.bom))
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.compose.foundation:foundation")
     implementation("androidx.compose.material3:material3")
-    implementation(libs.androidx.material3.icons.extended) // Use the correct alias from TOML
+    implementation(libs.androidx.material.icons.extended)
+// Use the correct alias from TOML
 
     // Navigation
     implementation("androidx.navigation:navigation-compose:2.7.7")
