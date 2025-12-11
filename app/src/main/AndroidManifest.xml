@@ -10,9 +10,11 @@
 
     <!-- START: NEW PERMISSIONS FOR STEPS/SERVICES -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_HEALTH"/>
     <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION"/>
     <uses-permission android:name="android.permission.BODY_SENSORS"/>
     <!-- END: NEW PERMISSIONS -->
+
 
 
     <application
@@ -50,7 +52,9 @@
         <service
             android:name=".services.StepCounterService"
             android:enabled="true"
-            android:exported="false"/>
+            android:exported="false"
+            android:foregroundServiceType="health"/>
+
 
 
         <!-- END: DECLARE THE NEW SERVICE -->

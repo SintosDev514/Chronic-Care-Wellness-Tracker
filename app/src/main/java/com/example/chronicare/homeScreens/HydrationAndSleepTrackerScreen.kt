@@ -25,6 +25,9 @@ import androidx.navigation.NavController
 import com.example.chronicare.screens.SharedData
 import com.example.chronicare.ui.theme.ChroniCareTheme
 import com.example.chronicare.services.StepCounterService
+import androidx.compose.foundation.rememberScrollState // Already have this
+import androidx.compose.foundation.verticalScroll // <-- ADD THIS LINE
+
 
 
 @Composable
@@ -68,7 +71,8 @@ fun HealthTrackingApp(navController: NavController, sharedData: SharedData) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(20.dp),
+                    .padding(20.dp)
+                    .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(24.dp)
             ) {
                 Text(
@@ -200,9 +204,7 @@ fun HealthTrackingApp(navController: NavController, sharedData: SharedData) {
                 }
 
 
-                // ---------------------------
-                // STEP TRACKER BUTTON
-                // ---------------------------
+
 
             }
         }
