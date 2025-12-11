@@ -1,6 +1,11 @@
 package com.example.chronicare.homeScreens
 
+import android.Manifest // <-- ADDED
+import android.content.Intent // <-- ADDED
+import android.os.Build // <-- ADDED
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -8,16 +13,19 @@ import androidx.compose.material.icons.filled.LocalDrink
 import androidx.compose.material.icons.outlined.LocalDrink
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.chronicare.screens.SharedData
 import com.example.chronicare.ui.theme.ChroniCareTheme
+import com.example.chronicare.services.StepCounterService
+
 
 @Composable
 fun HealthTrackingApp(navController: NavController, sharedData: SharedData) {
@@ -31,8 +39,26 @@ fun HealthTrackingApp(navController: NavController, sharedData: SharedData) {
     val waterGoal = 2000f
     val glassSize = 250f // per glass
 
-    val context = LocalContext.current
+    val context = LocalContext.current // <-- FIXED: Only one instance now
     val accentColor = Color(0xFF007F7A)
+
+    // 1. Create a permission launcher for Activity Recognition
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted: Boolean ->
+        if (isGranted) {
+            // Permission granted, start the service
+            val serviceIntent = Intent(context, StepCounterService::class.java)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                context.startForegroundService(serviceIntent)
+            } else {
+                context.startService(serviceIntent)
+            }
+        } else {
+            // Permission denied
+            Toast.makeText(context, "Activity Recognition permission is required to track steps.", Toast.LENGTH_SHORT).show()
+        }
+    }
 
     ChroniCareTheme {
         Surface(
@@ -45,7 +71,6 @@ fun HealthTrackingApp(navController: NavController, sharedData: SharedData) {
                     .padding(20.dp),
                 verticalArrangement = Arrangement.spacedBy(24.dp)
             ) {
-
                 Text(
                     text = "Daily Health Tracker",
                     style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
@@ -88,32 +113,27 @@ fun HealthTrackingApp(navController: NavController, sharedData: SharedData) {
                     shape = RoundedCornerShape(16.dp),
                     elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
                 ) {
-
                     Column(
                         modifier = Modifier.padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-
                         Text(
                             text = "Water Intake Tracker",
                             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
                             color = MaterialTheme.colorScheme.onSurface
                         )
-
                         Text(
                             text = "Goal: 2000ml (8 glasses)",
                             style = MaterialTheme.typography.bodyMedium
                         )
-
                         LinearProgressIndicator(
-                            progress = { (currentWater / waterGoal).coerceIn(0f, 1f) },
+                            progress = (currentWater / waterGoal).coerceIn(0f, 1f),
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(8.dp)
                                 .clip(RoundedCornerShape(4.dp)),
                             color = accentColor
                         )
-
                         Text(
                             text = "Current: ${currentWater.toInt()} ml",
                             style = MaterialTheme.typography.bodyLarge.copy(
@@ -121,10 +141,7 @@ fun HealthTrackingApp(navController: NavController, sharedData: SharedData) {
                                 fontWeight = FontWeight.Medium
                             )
                         )
-
-                        // ---------------------------
                         // GLASS ICONS ROW
-                        // ---------------------------
                         WaterGlassesRow(
                             currentWater = currentWater,
                             waterGoal = waterGoal,
@@ -138,11 +155,63 @@ fun HealthTrackingApp(navController: NavController, sharedData: SharedData) {
                         )
                     }
                 }
+
+                // ---------------------------
+// STEP TRACKER CARD
+// ---------------------------
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                    shape = RoundedCornerShape(16.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+
+                        Text(
+                            text = "Step Tracker",
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+
+                        Text(
+                            text = "Tap the button to start counting steps.",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+
+                        // Start Button
+                        Button(
+                            onClick = {
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                                    permissionLauncher.launch(Manifest.permission.ACTIVITY_RECOGNITION)
+                                } else {
+                                    val serviceIntent = Intent(context, StepCounterService::class.java)
+                                    context.startService(serviceIntent)
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(containerColor = accentColor)
+                        ) {
+                            Text("Start Step Tracking", color = Color.White)
+                        }
+                    }
+                }
+
+
+                // ---------------------------
+                // STEP TRACKER BUTTON
+                // ---------------------------
+
             }
         }
     }
 }
 
+
+
+// ... (The rest of your code: WaterGlassesRow and TrackerCard are unchanged and correct) ...
 @Composable
 fun WaterGlassesRow(
     currentWater: Float,

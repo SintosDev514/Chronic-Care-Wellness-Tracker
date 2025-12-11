@@ -1,5 +1,7 @@
 package com.example.chronicare.homeScreens
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -11,6 +13,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -35,6 +38,9 @@ object DashboardConstants {
     val TEXT_PRIMARY = Color(0xFF1E293B)
     val TEXT_SECONDARY = Color(0xFF64748B)
 }
+
+
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

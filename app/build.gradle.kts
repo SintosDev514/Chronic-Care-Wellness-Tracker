@@ -62,6 +62,8 @@ dependencies {
     implementation("com.google.firebase:firebase-auth-ktx")
     implementation("com.google.firebase:firebase-database-ktx")
 
+    implementation("com.google.firebase:firebase-firestore-ktx")
+
     // Compose - Import the Bill of Materials (BoM)
     implementation(platform(libs.androidx.compose.bom))
     implementation("androidx.compose.ui:ui")

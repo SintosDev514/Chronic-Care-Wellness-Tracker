@@ -2,11 +2,18 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- Permissions for notifications, alarms, and reboot detection -->
+    <!-- Permissions for notifications, alarms, and reboot -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
+    <!-- START: NEW PERMISSIONS FOR STEPS/SERVICES -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION"/>
+    <uses-permission android:name="android.permission.BODY_SENSORS"/>
+    <!-- END: NEW PERMISSIONS -->
+
 
     <application
         android:allowBackup="true"
@@ -29,7 +36,7 @@
             </intent-filter>
         </activity>
 
-        <!-- Receiver for handling scheduled alarms and rescheduling after reboot -->
+        <!-- Receiver for Alarms -->
         <receiver
             android:name=".homeScreens.ReminderReceiver"
             android:enabled="true"
@@ -38,6 +45,15 @@
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
             </intent-filter>
         </receiver>
+
+        <!-- START: DECLARE THE NEW STEP TRACKING SERVICE -->
+        <service
+            android:name=".services.StepCounterService"
+            android:enabled="true"
+            android:exported="false"/>
+
+
+        <!-- END: DECLARE THE NEW SERVICE -->
 
     </application>
 
