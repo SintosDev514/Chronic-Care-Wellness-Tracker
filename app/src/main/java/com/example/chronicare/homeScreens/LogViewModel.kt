@@ -7,71 +7,111 @@ import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
+import com.google.firebase.database.FirebaseDatabase
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 
 // Same data class as in your screen, can be moved to a separate file if needed
-data class LogEntry(val date: String, val description: String, val status: String)
+//data class LogEntry(val date: String, val description: String, val status: String)
+data class LogEntry(
+    val date: String,
+    val steps: Long = 0,
+    val sleepHours: Float = 0f,
+    val waterMl: Float = 0f
+)
+
 
 class LogViewModel : ViewModel() {
-    // A private mutable state for the list of logs
+
     private val _dailyLogs = mutableStateOf<List<LogEntry>>(emptyList())
-    // An immutable public state that the UI will observe
     val dailyLogs = _dailyLogs
 
-    // A state to track whether data is currently being loaded
     val isLoading = mutableStateOf(true)
 
     init {
-        // Automatically fetch the logs when the ViewModel is created
         fetchDailyLogs()
     }
 
     private fun fetchDailyLogs() {
-        // Use viewModelScope to launch a coroutine that is automatically cancelled
-        // when the ViewModel is cleared.
         viewModelScope.launch {
             try {
-                // Get the current user's ID. If not logged in, we can't fetch data.
                 val userId = FirebaseAuth.getInstance().currentUser?.uid
                 if (userId == null) {
-                    Log.e("LogViewModel", "User is not logged in. Cannot fetch logs.")
-                    isLoading.value = false // Stop loading
+                    isLoading.value = false
                     return@launch
                 }
 
-                val db = FirebaseFirestore.getInstance()
+                val firestore = FirebaseFirestore.getInstance()
+                val realtimeDb = FirebaseDatabase.getInstance().reference
 
-                // Firestore query: Go to the user's document, then to the 'dailySteps' collection,
-                // and order the results by the document ID (which is the date string) in descending order.
-                val documents = db.collection("users")
+                /** ---------------------------
+                 * 1️⃣ FETCH STEPS (Firestore)
+                 * --------------------------- */
+                val stepDocs = firestore.collection("users")
                     .document(userId)
                     .collection("dailySteps")
-                    .orderBy(com.google.firebase.firestore.FieldPath.documentId(), Query.Direction.DESCENDING)
+                    .orderBy(
+                        com.google.firebase.firestore.FieldPath.documentId(),
+                        Query.Direction.DESCENDING
+                    )
                     .get()
-                    .await() // .await() is a helper from the coroutines library to wait for the task to complete
+                    .await()
 
-                // Map the Firestore documents to our LogEntry data class
-                val logs = documents.map { doc ->
-                    val steps = doc.getLong("steps") ?: 0
+                val stepMap = mutableMapOf<String, Long>()
+
+                for (doc in stepDocs) {
+                    stepMap[doc.id] = doc.getLong("steps") ?: 0L
+                }
+
+                /** ---------------------------
+                 * 2️⃣ FETCH SLEEP + WATER (Realtime DB)
+                 * --------------------------- */
+                val healthSnapshot = realtimeDb
+                    .child("users")
+                    .child(userId)
+                    .child("health_logs")
+                    .get()
+                    .await()
+
+                val sleepMap = mutableMapOf<String, Float>()
+                val waterMap = mutableMapOf<String, Float>()
+
+                for (dateSnap in healthSnapshot.children) {
+                    val date = dateSnap.key ?: continue
+
+                    val sleepLong = dateSnap.child("sleepHours").getValue(Long::class.java)
+                    val waterLong = dateSnap.child("waterIntakeML").getValue(Long::class.java)
+
+                    sleepMap[date] = sleepLong?.toFloat() ?: 0f
+                    waterMap[date] = waterLong?.toFloat() ?: 0f
+
+                }
+
+
+                /** ---------------------------
+                 * 3️⃣ MERGE BY DATE
+                 * --------------------------- */
+                val allDates = (stepMap.keys + sleepMap.keys + waterMap.keys)
+                    .distinct()
+                    .sortedDescending()
+
+                val logs = allDates.map { date ->
                     LogEntry(
-                        date = doc.id, // The document ID is our date "yyyy-MM-dd"
-                        description = "You walked $steps steps.",
-                        status = if (steps > 5000) "Completed" else "Pending" // Example status logic
+                        date = date,
+                        steps = stepMap[date] ?: 0,
+                        sleepHours = sleepMap[date] ?: 0f,
+                        waterMl = waterMap[date] ?: 0f
                     )
                 }
 
-                // Update the state with the new list of logs
                 _dailyLogs.value = logs
-                Log.d("LogViewModel", "Successfully fetched ${logs.size} daily logs.")
 
             } catch (e: Exception) {
-                // Handle any errors during the fetch, e.g., network issues
-                Log.e("LogViewModel", "Error fetching daily logs", e)
+                Log.e("LogViewModel", "Error fetching logs", e)
             } finally {
-                // Ensure the loading indicator is turned off, even if there was an error
                 isLoading.value = false
             }
         }
     }
 }
+
