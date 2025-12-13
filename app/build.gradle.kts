@@ -72,7 +72,10 @@ dependencies {
     implementation("androidx.compose.foundation:foundation")
     implementation("androidx.compose.material3:material3")
     implementation(libs.androidx.material.icons.extended)
-// Use the correct alias from TOML
+// Use the correct alias from TOML\
+    implementation("androidx.compose.material:material-icons-core")
+
+
 
     // Navigation
     implementation("androidx.navigation:navigation-compose:2.7.7")
