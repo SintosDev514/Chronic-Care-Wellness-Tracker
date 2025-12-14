@@ -4,15 +4,14 @@ import android.util.Log
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.chronicare.model.HealthInsight
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
-import com.google.firebase.database.FirebaseDatabase
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 
-// Same data class as in your screen, can be moved to a separate file if needed
-//data class LogEntry(val date: String, val description: String, val status: String)
 data class LogEntry(
     val date: String,
     val steps: Long = 0,
@@ -20,8 +19,9 @@ data class LogEntry(
     val waterMl: Float = 0f
 )
 
-
 class LogViewModel : ViewModel() {
+
+    val healthInsights = mutableStateOf<List<HealthInsight>>(emptyList())
 
     private val _dailyLogs = mutableStateOf<List<LogEntry>>(emptyList())
     val dailyLogs = _dailyLogs
@@ -44,9 +44,7 @@ class LogViewModel : ViewModel() {
                 val firestore = FirebaseFirestore.getInstance()
                 val realtimeDb = FirebaseDatabase.getInstance().reference
 
-                /** ---------------------------
-                 * 1️⃣ FETCH STEPS (Firestore)
-                 * --------------------------- */
+                // 1️⃣ Fetch steps (Firestore)
                 val stepDocs = firestore.collection("users")
                     .document(userId)
                     .collection("dailySteps")
@@ -58,14 +56,11 @@ class LogViewModel : ViewModel() {
                     .await()
 
                 val stepMap = mutableMapOf<String, Long>()
-
                 for (doc in stepDocs) {
                     stepMap[doc.id] = doc.getLong("steps") ?: 0L
                 }
 
-                /** ---------------------------
-                 * 2️⃣ FETCH SLEEP + WATER (Realtime DB)
-                 * --------------------------- */
+                // 2️⃣ Fetch sleep & water (Realtime DB)
                 val healthSnapshot = realtimeDb
                     .child("users")
                     .child(userId)
@@ -78,19 +73,13 @@ class LogViewModel : ViewModel() {
 
                 for (dateSnap in healthSnapshot.children) {
                     val date = dateSnap.key ?: continue
-
-                    val sleepLong = dateSnap.child("sleepHours").getValue(Long::class.java)
-                    val waterLong = dateSnap.child("waterIntakeML").getValue(Long::class.java)
-
-                    sleepMap[date] = sleepLong?.toFloat() ?: 0f
-                    waterMap[date] = waterLong?.toFloat() ?: 0f
-
+                    sleepMap[date] =
+                        dateSnap.child("sleepHours").getValue(Long::class.java)?.toFloat() ?: 0f
+                    waterMap[date] =
+                        dateSnap.child("waterIntakeML").getValue(Long::class.java)?.toFloat() ?: 0f
                 }
 
-
-                /** ---------------------------
-                 * 3️⃣ MERGE BY DATE
-                 * --------------------------- */
+                // 3️⃣ Merge by date
                 val allDates = (stepMap.keys + sleepMap.keys + waterMap.keys)
                     .distinct()
                     .sortedDescending()
@@ -105,6 +94,7 @@ class LogViewModel : ViewModel() {
                 }
 
                 _dailyLogs.value = logs
+                buildHealthInsights(logs)
 
             } catch (e: Exception) {
                 Log.e("LogViewModel", "Error fetching logs", e)
@@ -113,5 +103,28 @@ class LogViewModel : ViewModel() {
             }
         }
     }
-}
 
+    private fun buildHealthInsights(logs: List<LogEntry>) {
+        if (logs.isEmpty()) return
+
+        val latest = logs.first()
+
+        healthInsights.value = listOf(
+            HealthInsight(
+                title = "Steps Walked",
+                value = latest.steps.toString(),
+                description = "Steps recorded for the latest day"
+            ),
+            HealthInsight(
+                title = "Sleep Duration",
+                value = "${latest.sleepHours} hrs",
+                description = "Sleep duration from last night"
+            ),
+            HealthInsight(
+                title = "Water Intake",
+                value = "${latest.waterMl / 1000} L",
+                description = "Water consumed "
+            )
+        )
+    }
+}

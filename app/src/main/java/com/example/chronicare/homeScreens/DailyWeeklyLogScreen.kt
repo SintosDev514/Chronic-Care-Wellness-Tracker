@@ -3,20 +3,24 @@ package com.example.chronicare.homeScreens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.LocalDrink
+import androidx.compose.material.icons.filled.NightsStay
+import androidx.compose.material.icons.filled.DirectionsWalk
 import androidx.compose.material3.*
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 
-/* -----------------------------
-   UI CONSTANTS
------------------------------- */
 object DashboardConstantsOne {
     val PRIMARY_COLOR = Color(0xFF006A6A)
     val TEXT_SECONDARY = Color(0xFF6B7280)
@@ -28,20 +32,13 @@ object DashboardConstantsOne {
 
 private val accentColor = Color(0xFF007F7A)
 
-/* -----------------------------
-   TABS
------------------------------- */
 enum class TabType { Daily, Weekly }
 
-/* -----------------------------
-   SCREEN
------------------------------- */
 @Composable
 fun DailyWeeklyLogScreen(
     logViewModel: LogViewModel = viewModel()
 ) {
     var selectedTab by remember { mutableStateOf(TabType.Daily) }
-
     val dailyLogs = logViewModel.dailyLogs.value
     val isLoading = logViewModel.isLoading.value
 
@@ -62,7 +59,13 @@ fun DailyWeeklyLogScreen(
 
         TabRow(
             selectedTabIndex = selectedTab.ordinal,
-            containerColor = DashboardConstantsOne.PRIMARY_COLOR.copy(alpha = 0.1f)
+            containerColor = DashboardConstantsOne.PRIMARY_COLOR.copy(alpha = 0.1f),
+            indicator = { tabPositions ->
+                TabRowDefaults.Indicator(
+                    Modifier.tabIndicatorOffset(tabPositions[selectedTab.ordinal]),
+                    color = accentColor
+                )
+            }
         ) {
             Tab(
                 selected = selectedTab == TabType.Daily,
@@ -84,7 +87,7 @@ fun DailyWeeklyLogScreen(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    CircularProgressIndicator()
+                    CircularProgressIndicator(color = accentColor)
                 }
             }
 
@@ -92,16 +95,11 @@ fun DailyWeeklyLogScreen(
                 DailyLogList(logs = dailyLogs)
             }
 
-            else -> {
-                WeeklyPlaceholder()
-            }
+            else -> WeeklyPlaceholder()
         }
     }
 }
 
-/* -----------------------------
-   DAILY LIST
------------------------------- */
 @Composable
 fun DailyLogList(logs: List<LogEntry>) {
     if (logs.isEmpty()) {
@@ -119,40 +117,26 @@ fun DailyLogList(logs: List<LogEntry>) {
             modifier = Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            items(logs.size) { index ->
-                LogItem(log = logs[index])
+            items(logs) { log ->
+                LogItem(log = log)
             }
         }
     }
 }
 
-/* -----------------------------
-   LOG ITEM
------------------------------- */
 @Composable
 fun LogItem(log: LogEntry) {
-
-    val completed =
-        log.steps >= 5000 &&
-                log.sleepHours >= 8 &&
-                log.waterMl >= 2000
-
-    val statusColor =
-        if (completed) DashboardConstantsOne.SUCCESS_COLOR
-        else DashboardConstantsOne.WARNING_COLOR
+    val completed = log.steps >= 5000 && log.sleepHours >= 8 && log.waterMl >= 2000
+    val statusColor = if (completed) DashboardConstantsOne.SUCCESS_COLOR else DashboardConstantsOne.WARNING_COLOR
 
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White)
     ) {
-        Column(
-            modifier = Modifier
-                .padding(20.dp)
-        ) {
+        Column(modifier = Modifier.padding(16.dp)) {
 
-            /* ---------- HEADER ---------- */
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -160,9 +144,7 @@ fun LogItem(log: LogEntry) {
             ) {
                 Text(
                     text = log.date,
-                    style = MaterialTheme.typography.titleSmall.copy(
-                        fontWeight = FontWeight.Bold
-                    ),
+                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
                     color = DashboardConstantsOne.PRIMARY_COLOR
                 )
 
@@ -182,28 +164,27 @@ fun LogItem(log: LogEntry) {
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            /* ---------- METRICS ---------- */
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-
                 MetricItem(
                     title = "Steps",
                     value = log.steps.toString(),
-                    unit = "steps"
+                    unit = "steps",
+                    icon = Icons.Default.DirectionsWalk
                 )
-
                 MetricItem(
                     title = "Sleep",
                     value = log.sleepHours.toString(),
-                    unit = "hrs"
+                    unit = "hrs",
+                    icon = Icons.Default.NightsStay
                 )
-
                 MetricItem(
                     title = "Water",
                     value = log.waterMl.toInt().toString(),
-                    unit = "ml"
+                    unit = "ml",
+                    icon = Icons.Default.LocalDrink
                 )
             }
         }
@@ -211,19 +192,20 @@ fun LogItem(log: LogEntry) {
 }
 
 @Composable
-fun MetricItem(
-    title: String,
-    value: String,
-    unit: String
-) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
+fun MetricItem(title: String, value: String, unit: String, icon: ImageVector) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Box(
+            modifier = Modifier
+                .size(36.dp)
+                .background(accentColor.copy(alpha = 0.1f), shape = CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(imageVector = icon, contentDescription = null, tint = accentColor)
+        }
+        Spacer(modifier = Modifier.height(4.dp))
         Text(
             text = value,
-            style = MaterialTheme.typography.titleMedium.copy(
-                fontWeight = FontWeight.Bold
-            ),
+            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
             color = Color.Black
         )
         Text(
@@ -234,10 +216,6 @@ fun MetricItem(
     }
 }
 
-
-/* -----------------------------
-   WEEKLY PLACEHOLDER
------------------------------- */
 @Composable
 fun WeeklyPlaceholder() {
     Box(
@@ -251,10 +229,7 @@ fun WeeklyPlaceholder() {
     }
 }
 
-/* -----------------------------
-   PREVIEW (SAFE)
------------------------------- */
-@Preview(showBackground = true)
+
 @Composable
 fun DailyWeeklyLogScreenPreview() {
     WeeklyPlaceholder()
